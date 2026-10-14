@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+model Api {
+  id String @id @default(uuid())
+  name String
+  slug String @unique
+  baseUrl String
+  enabled Boolean @default(true)
+  monitoring Boolean @default(true)
+  policy Json
+  monitorPath String @default("/")
+  intervalSeconds Int @default(30)
+  createdAt DateTime @default(now())
+  credentials Credential[]
+  measurements Measurement[]
+  events Event[]
+  incidents Incident[]
+  savedRequests SavedRequest[]
+}
+model Credential {
+  id String @id @default(uuid())
+  apiId String
+  api Api @relation(fields: [apiId], references: [id], onDelete: Cascade)
+  label String
+  keyHash String
+  revokedAt DateTime?
+  @@index([apiId])
+}
+model Measurement {
+  id String @id @default(uuid())
+  apiId String
+  api Api @relation(fields: [apiId], references: [id], onDelete: Cascade)
+  kind String
+  method String?
+  path String?
+  statusCode Int
+  latencyMs Float
+  decision String
+  createdAt DateTime @default(now())
+  @@index([apiId, createdAt])
+  @@index([kind, createdAt])
+}
+model Event {
+  id String @id @default(uuid())
+  apiId String
+  api Api @relation(fields: [apiId], references: [id], onDelete: Cascade)
+  eventType String
+  severity String
+  reason String
+  createdAt DateTime @default(now())
+  @@index([apiId, createdAt])
+  @@index([eventType, createdAt])
+}
+model Incident {
+  id String @id @default(uuid())
+  apiId String
+  api Api @relation(fields: [apiId], references: [id], onDelete: Cascade)
+  incidentType String
+  startedAt DateTime @default(now())
+  resolvedAt DateTime?
+  @@index([apiId, startedAt])
+}
+model SavedRequest {
+  id String @id @default(uuid())
+  apiId String
+  api Api @relation(fields: [apiId], references: [id], onDelete: Cascade)
+  name String
+  requestConfig Json
+  createdAt DateTime @default(now())
+  @@index([apiId, createdAt])
+}

@@ -1,0 +1,1 @@
+{"name":"@apishield/shared","private":true,"type":"module","exports":{"./network":"./network.ts","./security":"./security.ts"}}

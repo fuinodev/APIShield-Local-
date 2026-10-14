@@ -1,0 +1,15 @@
+# Local security model
+
+Management services bind to 127.0.0.1. Every management operation requires a random token in `X-APIShield-Token`; cookies are not used. Explicit Origin and Host checks reject foreign browser origins and DNS-rebinding hostnames. CORS allows only the local dashboard. The custom authentication header prevents cross-origin form-based CSRF. The token is never bundled into the frontend or saved in browser storage. Filesystem access to `.env` grants management access; use an appropriate Windows account ACL and protect PostgreSQL credentials.
+
+Only http/https backends on literal loopback addresses or localhost are accepted. Allowed ports are explicit configuration. Management ports are forbidden even if accidentally listed. localhost is pinned to 127.0.0.1; redirects are returned without following. Arbitrary outbound internet targets, URL credentials, query-bearing backend bases, fragments and unsafe request paths are rejected. HTTPS uses normal certificate validation; do not disable certificate checking.
+
+Forwarded, X-Forwarded-*, Host, proxy headers, hop-by-hop headers and connection-nominated headers are stripped. The gateway uses its socket peer for IP policy and rate limiting. APIShield's own API key header terminates at the gateway. Application bearer authorization is forwarded to preserve existing backend behavior. API keys use cryptographically random 256-bit values and SHA-256 hashes with constant-time comparison. JWT verification supports pinned RS256 PEM public keys, exact issuer and audience checks, signatures, expiry and required identity/time claims. Public keys are configured explicitly; remote key discovery is not enabled.
+
+IP allow lists restrict matching clients; block rules take precedence. Route authentication uses the longest matching path segment prefix. Baseline protection does not impose authentication unless configured. Size and timeout limits apply to console, gateway and monitoring requests.
+
+Logs contain event categories and generic diagnostic explanations, never credential values or bodies. Gateway measurements omit query strings. Paths can contain sensitive identifiers; avoid embedding secrets in URL path segments. Saved request history contains method, destination mode, path without query, status and latency only. Upstream responses are shown in the testing console as escaped text; they are not rendered as HTML.
+
+Local clients can bypass the gateway if the backend is independently reachable. Loopback binding blocks remote access but not other local processes. For stronger isolation, place the backend in a controlled network boundary and permit only gateway access. Changes to system firewall or backend bindings require environment-specific authorization and are not performed automatically.
+
+Five repeated violations create an incident indicator, not a claim of confirmed attack. Security classifications are rule-based and do not provide comprehensive attack detection. The MVP does not inspect payloads for all application vulnerabilities.

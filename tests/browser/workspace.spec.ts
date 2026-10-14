@@ -1,0 +1,24 @@
+import 'dotenv/config';
+import {test,expect} from '@playwright/test';
+import {createFixture} from '../../scripts/fixture.js';
+const fixture=createFixture();
+let createdId='';
+test.beforeAll(()=>new Promise<void>(resolve=>fixture.listen(8082,'127.0.0.1',resolve)));
+test.afterAll(()=>new Promise<void>(resolve=>fixture.close(()=>resolve())));
+test.afterEach(async({request})=>{if(createdId){await request.delete('http://127.0.0.1:3000/apis/'+createdId,{headers:{'X-APIShield-Token':process.env.MANAGEMENT_TOKEN!}});createdId='';}});
+test('connect, register, inspect and remove an isolated fixture API',async({page})=>{
+ await page.goto('/');await page.getByLabel('Local management token').fill(process.env.MANAGEMENT_TOKEN!);await page.getByRole('button',{name:'Connect workspace'}).click();
+ await expect(page.getByRole('heading',{name:'Overview',exact:true})).toBeVisible();
+ await page.screenshot({path:'test-results/dashboard-desktop.png',fullPage:true});
+ await page.getByRole('button',{name:'＋ Register API',exact:true}).click();await expect(page.getByLabel('API name',{exact:true})).toBeFocused();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
+ await page.getByRole('button',{name:'＋ Register API',exact:true}).click();await page.getByLabel('API name',{exact:true}).fill('Browser verification');await page.getByLabel('Backend URL',{exact:true}).fill('http://127.0.0.1:8082');const created=page.waitForResponse(r=>r.url().endsWith('/apis')&&r.request().method()==='POST');await page.getByRole('button',{name:'Register API ↗',exact:true}).click();createdId=(await (await created).json()).id;
+ await expect(page.getByRole('heading',{name:'Browser verification',exact:true})).toBeVisible();await expect(page.getByText('PROTECTED GATEWAY',{exact:true})).toBeVisible();
+ await page.waitForTimeout(2300);
+ await page.getByRole('button',{name:'Test this API'}).click();await page.getByRole('button',{name:'Send ↗',exact:true}).click();await expect(page.locator('.response-body')).toContainText('APIShield isolated test backend');
+ await expect(page.getByRole('button',{name:'Send ↗',exact:true})).toBeEnabled();await page.screenshot({path:'test-results/console-desktop.png',fullPage:true});
+ await page.locator('nav button').filter({hasText:'APIs'}).click();await page.getByLabel('Search APIs').fill('no-such-backend');await expect(page.getByRole('heading',{name:'No matching APIs'})).toBeVisible();await page.getByRole('button',{name:'Clear',exact:true}).click();await page.getByRole('button',{name:'Open Browser verification'}).click();
+ await page.getByRole('button',{name:'Protection policies',exact:true}).click();await page.getByLabel('Authentication',{exact:true}).selectOption('apiKey');await page.getByRole('button',{name:'Advanced JSON',exact:true}).click();await expect(page.getByLabel('Security policy')).toHaveValue(/apiKey/);await page.getByRole('button',{name:'Simple controls',exact:true}).click();await page.screenshot({path:'test-results/policies-desktop.png',fullPage:true});await page.getByRole('button',{name:'Apply policies'}).click();await expect(page.getByRole('status')).toContainText('Protection policies saved');
+ await page.getByRole('button',{name:'Test this API'}).click();await page.waitForTimeout(2300);await page.getByRole('button',{name:'Send ↗',exact:true}).click();await expect(page.locator('.diagnostic')).toContainText('Authentication is required');
+ await page.locator('nav button').filter({hasText:'APIs'}).click();await page.getByRole('button',{name:'Open Browser verification'}).click();page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Delete API',exact:true}).click();await expect(page.getByRole('heading',{name:'APIs',exact:true})).toBeVisible();
+ createdId='';await page.setViewportSize({width:390,height:844});await expect(page.getByRole('heading',{name:'APIs',exact:true})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);await page.screenshot({path:'test-results/dashboard-mobile.png',fullPage:true});
+});

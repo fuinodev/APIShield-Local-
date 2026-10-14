@@ -1,0 +1,8 @@
+node_modules/
+.pnpm-store/
+.env
+dist/
+test-results/
+playwright-report/
+*.log
+.restart-check.json
